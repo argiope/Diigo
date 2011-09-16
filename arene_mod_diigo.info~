@@ -1,0 +1,8 @@
+; $Id$
+name = Diigo Bookmarks
+description = Displays bookmarks from Diigo
+package = Arene Studios Modules
+core = 7.x
+
+version = 7.x-0.1-Dev
+

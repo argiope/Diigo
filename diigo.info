@@ -1,0 +1,11 @@
+; $Id$
+name = Diigo Bookmarks
+description = Displays bookmarks from Diigo
+package = Arene Studios Modules
+core = 7.x
+
+files[] = diigo.module
+files[] = diigo.classes.inc
+files[] = diigo.install
+;configure=admin/config/content/annotate/settings
+

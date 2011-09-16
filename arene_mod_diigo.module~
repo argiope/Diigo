@@ -1,0 +1,19 @@
+<?php
+function arene_mod_diigo_menu(){
+  $items['diigo'] = array(
+    'title' => 'Diigo',
+    'page callback' => 'arene_mod_diigo_page',
+    'type' => 'MENU_CALLBACK',
+  );
+  return $items;
+}
+
+function arene_mod_diigo_page(){
+  $account = array(
+    'name' => 'argiope',
+    'pass' => 'tei8beem',
+    'key' => '9853f460ca3682a5',
+  );
+  print_r($account);
+}
+

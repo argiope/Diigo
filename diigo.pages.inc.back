@@ -1,0 +1,72 @@
+<?php
+class DiigoInfo
+{
+  public $name = '';
+  public $pass = '';
+  public $tags = '';
+  private $apikey = '9853f460ca3682a5';
+  //public $bookmarks = '';
+
+  public function __construct($account){
+    $this->name = $account['name'];
+    $this->pass = $account['pass'];
+    if(isset($account['tags'])){
+      $tags = array();
+      foreach($account['tags'] as $tag){
+        $tags[] = urlencode('"'.$tag.'"');
+      }
+      $this->tags = implode(',',$tags);
+    }
+  }
+  public function get_bookmarks(){
+    $url = 'https://secure.diigo.com/api/v2/bookmarks?key=' . $this->apikey . '&user=' . $this->name;
+    if($this->tags)
+      $url .= '&tags=' . $this->tags;
+    $auth = $this->name . ':'. $this->pass;
+    $bookmarks = $this->get_cURL($url, $auth);
+    //$this->bookmarks = json_decode($bookmarks);
+    return json_decode($bookmarks);
+  }
+  public function get_cURL($url, $auth=false){
+    $curl = curl_init();
+    curl_setopt($curl, CURLOPT_URL, $url);
+    if($auth){
+      curl_setopt($curl, CURLOPT_USERPWD, $auth);
+      curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+      curl_setopt($curl, CURLOPT_CAINFO, getcwd() . "/diigo.pem");
+      curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, true);
+      curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 2);
+      }
+    $data = curl_exec($curl);
+    curl_close($curl);
+    return $data;
+  }
+  public function display_bookmarks_raw(){
+    print '<pre>';
+    print_r($this->get_bookmarks());
+    print '</pre>';
+  }
+  public function display_bookmarks(){
+    $bookmarks = $this->get_bookmarks();
+    print '<div class="diigo"><h3>Latest Bookmarks</h3><ul>';
+    if($bookmarks){
+      foreach($bookmarks as $bookmark){
+        $tags = preg_split('/,/' ,$bookmark->tags);
+        print '<li>';
+        print '<a href="'.$bookmark->url.'">'.htmlentities($bookmark->title, ENT_COMPAT, "ISO-8859-1").'</a><div class="diigo-tags">';
+        if($tags){
+          foreach($tags as $tag){
+            $tagclass = preg_replace('/ /','-', $tag);
+            print '<span class="diigo-tag tag-'.$tagclass.'">'.$tag.'</span>';
+          }
+        }
+        if($bookmark->comments)
+          print '<div class="comments">'.$bookmark->comments.'</div>';
+        print '</div></li>';
+
+      }
+    }
+    print '</ul></div>';
+  }
+}
+
