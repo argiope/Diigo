@@ -28,8 +28,8 @@ function diigo_action_info() {
 
 function diigo_display_page() {
   $account = array(
-    'user' => 'argiope',
-    'pass' => 'tei8beem',
+    'user' => '',
+    'pass' => '',
   );
   $user_defaults = array(
     //optional, string, only bookmarks with specified tags will be returned. multiple tags are separated by comma
