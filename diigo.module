@@ -3,13 +3,121 @@
  * Implements hook_menu().
  */
 function diigo_menu() {
-  $items['diigo'] = array(
+  $items['user/%user/diigo/display'] = array(
     'title' => 'Diigo',
     'page callback' => 'diigo_display_page',
-    'type' => MENU_CALLBACK,
-    'access callback' => TRUE,
+    'page arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+    'access callback' => 'user_view_access',
+    'access arguments' => array(1),
+  );
+  $items['user/%user/diigo'] = array(
+    'title' => 'Diigo Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('diigo_user_settings'),
+    'file' => 'diigo.settings.inc',
+    'type' => MENU_LOCAL_TASK,
+    'access callback' => 'user_view_access',
+    'access arguments' => array(1),
+  );
+  $items['admin/config/content/diigo/settings'] = array(
+    'title' => 'Diigo',
+    'description' => 'Configure Diigo Bookmarks.',
+    'file' => 'diigo.admin.inc',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('diigo_admin_settings'),
+    'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array('administer site configuration'),
   );
   return $items;
+}
+
+/**
+ * custom function to retrive diigo bookmarks and save them to the database.
+ *
+ * @param $uid
+ * users drupal user id.
+ *
+ */
+function diigo_download_bookmarks($uid){
+  module_load_include('inc', 'diigo', 'diigo.classes.inc');
+  //get the users diigo settings
+  $query = db_select('diigo_users', 'd');
+  $query->condition('uid', $uid)
+  ->fields('d', array('username', 'pass', 'list', 'sort', 'tags', 'filter'));
+  $results = $query->execute();
+  $account = array();
+  $settings = array();
+  foreach($results as $result){
+    foreach($result as $key => $value){
+      if($key == 'username' || $key == 'pass') {
+        $key = ($key == 'username')? 'user' : $key;
+        $account[$key] = $value;
+      }
+      elseif($key == 'tags') {
+        $settings[$key] = explode(',', $value);
+      }
+      else {
+        $settings[$key] = $value;
+      }
+    }
+  }
+  //get the api key for diigo
+  $apikey = db_query('SELECT api_key FROM {diigo} WHERE aid = 1')->fetchField();
+
+  //add count to the settings array
+  $settings['count'] = db_query('SELECT count FROM {diigo} WHERE aid = 1')->fetchField();
+  //new instance of the DiigoAPI class defined in diigo.classes.inc
+  $diigo = new DiigoAPI($apikey, $account, $settings);
+  if(!$diigo->error){
+    $bookmarks = $diigo->get_bookmarks();
+    foreach($bookmarks as $bookmark) {
+      unset($bookmark->annotations,
+      $bookmark->shared,
+      $bookmark->user,
+      $bookmark->readlater,
+      $bookmark->comments);
+      foreach($bookmark as $key => $value) {
+        if($value == ''){
+          unset($bookmark->$key);
+        }
+        else {
+          if($key != 'url'){
+            $bookmark->$key = check_plain($value);
+            if($key == 'tags'){
+              $bookmark->$key = preg_replace('/&amp;/', '&', $value);
+            }
+          }
+          else
+          {
+            $bookmark->$key = check_url($value);
+          }
+          if($key == 'created_at' || $key == 'updated_at'){
+            $date = new DateTime($value);
+            $bookmark->$key = date_format($date, 'U');
+          }
+        }
+      }
+      if(isset($bookmark->desc)){
+        $bookmark->description = $bookmark->desc;
+        unset($bookmark->desc);
+      }
+      $bookmark->uid = $uid;
+      drupal_write_record('diigo_bookmarks', $bookmark);
+    }
+    return $bookmarks;
+  }
+  else {
+    return 'Error: ' . $diigo->error;
+  }
+}
+
+/**
+ * deletes bookmarks for a specific user
+ */
+function diigo_delete_bookmarks($uid){
+  $query = db_delete('diigo_bookmarks');
+  $query->condition('uid', $uid)->execute();
 }
 
 /**
@@ -27,61 +135,176 @@ function diigo_action_info() {
 }
 
 function diigo_display_page() {
-  $account = array(
-    'user' => '',
-    'pass' => '',
-  );
-  $user_defaults = array(
-    //optional, string, only bookmarks with specified tags will be returned. multiple tags are separated by comma
-    'tags' => array('Web Design & Development'),
-    //optional, string, the list name of a bookmark list, when specified, user must be also specified
-    'list' => '',
-  );
-  $defaults = array(
-    //optional, number, the number of bookmarks to fetch, defaults to 10, max:100
-    'count' => 10,
-    //optional, string, public: only returns public bookmarks; all: returns all bookmarks including private ones, defaults to public
-    'filter' => 'public',
-    //optional, number 0-3, determines the order of bookmarks to fetch, 0: created_at, 1: updated_at, 2: popularity, 3: hot, defaults to 0
-    'sort' => 0,
-    //optional, number, the start offset of the bookmarks to fetch starting from 0, defaults to 0
-    'start' => 0,
-  );
-  $settings = array_merge($defaults, $user_defaults);
-  dpr($settings);
-  include_once 'diigo.classes.inc';
-  $apikey = '9853f460ca3682a5';
-  $diigo = new DiigoAPI($apikey, $account, $settings);
-  if(!$diigo->error){
-    $bookmarks = $diigo->get_bookmarks();
-    dpr($bookmarks);
-    //dpr($diigo->responce);
-    foreach($bookmarks as $bookmark) {
-      //
-      foreach($bookmark as $key => $value) {
-        if($key == 'url') {
-          $matches = array();
-          preg_match('/(?:http:\/\/)([-_\w\d\.]+)/', $value, $matches);
-          print '<img alt="" src="http://www.google.com/s2/favicons?domain='.$matches[1].'"><br />';
-        }
-      }
-    }
+  //dpr(diigo_download_bookmarks(1));
+  $query = db_select('diigo_bookmarks', 'd')
+  ->condition('uid', 1)
+  ->fields('d', array(
+      'title',
+      'url',
+      'description',
+      'tags',
+      'uid',
+      'created_at',
+      'updated_at',
+    ));
+  $results = $query->execute();
+  $bookmarks = array();
+  foreach($results as $result){
+    $bookmarks[] = $result;
   }
-  //print_r($diigo);
+  $output = theme('diigo', array('bookmarks'=>$bookmarks));
+  return $output;
+  diigo_delete_bookmarks(1);
 }
 
 /**
- * Implements hook_block_info().
+ * displays the bookmarks of a specific user.
  */
-function diigo_block_info() {
-  $blocks['diigo_bookmarks'] = array(
-  'info' => t('Diigo Bookmarks'),
-  'status' => TRUE,
-  'region' => 'footer',
-  'weight' => 0,
-  'visibility' => 1,
-  );
+function diigo_display_bookmarks($uid) {
+  $query = db_select('diigo_bookmarks', 'd')
+  ->condition('uid', $uid)
+  ->fields('d', array(
+      'title',
+      'url',
+      'description',
+      'tags',
+      'uid',
+      'created_at',
+      'updated_at',
+    ));
+  $results = $query->execute();
+  $bookmarks = array();
+  foreach($results as $result){
+    $bookmarks[] = $result;
+  }
+  $output = theme('diigo', array('bookmarks'=>$bookmarks));
+  return $output;
+}
 
+
+/**
+ * Implmentation of hook_theme()
+ */
+function diigo_theme() {
+  return array(
+    'diigo' => array(
+      'template' => 'diigo',
+      'path' => drupal_get_path('module', 'diigo'),
+      'variables' => array('bookmarks' => NULL),
+    ),
+  );
+}
+
+/**
+ * template_preprocess_hook()
+ */
+
+function template_preprocess_diigo(&$variables){
+  foreach($variables['bookmarks'] as $bookmark){
+  foreach($bookmark as $key => $value) {
+      if($key == 'url') {
+        $matches = array();
+        preg_match('/(?:http:\/\/)([-_\w\d\.]+)/', $value, $matches);
+        $bookmark->favicon = '<img alt="" src="http://www.google.com/s2/favicons?domain='.$matches[1].'">';
+        unset($matches);
+      }
+      elseif($key == 'tags'){
+        $bookmark->$key = explode(',', $value);
+      }
+      elseif($key == 'updated_at' || $key == 'created_at') {
+        $date = new DateTime('@' . $value);
+        $bookmark->$key = date_format($date, 'F d, Y \a\t h:i a');
+      }
+    }
+    $bookmark->link = l($bookmark->title, $bookmark->url);
+    if($bookmark->created_at == $bookmark->updated_at){
+      $bookmark->updated_at = '';
+    }
+  }
+  return $variables;
+}
+/**
+ * An implementation of hook_block_info()
+ */
+function diigo_block_info(){
+  //
+  $blocks['diigo_bookmarks'] = array(
+    'info' => t('Diigo Bookmarks'),
+    'status' => TRUE,
+    'region' => 'footer',
+    'weight' => 20,
+    'visibility' => 1,
+  );
   return $blocks;
+}
+
+/**
+ * An implementation of hook_block_configure()
+ */
+function diigo_block_configure($delta = ''){
+  //
+  $form = array();
+  switch($delta){
+    case 'diigo_bookmarks':
+      $form['user_to_display'] = array(
+        '#title' => t('Display bookmarks of a user'),
+        '#type' => 'textfield',
+        '#size' => '10',
+        '#default_value' => '',
+        '#description' => 'Display the bookmars of a user takes a uid.',
+      );
+    break;
+  }
+  return $form;
+}
+
+/**
+ * An implementation of hook_block_save()
+ */
+function diigo_block_save($delta = '', $edit = array()){
+  //
+  switch($delta){
+    case 'diigo_bookmarks':
+      //$record = new StdClass();
+      //drupal_write_record('arene3_blocks', $record, 'id');
+    break;
+  }
+  return;
+}
+
+/**
+ * An implementation of hook_block_view()
+ */
+function diigo_block_view($delta = ''){
+  //
+  switch($delta){
+    case 'diigo_bookmarks':
+      $args = arg();
+      if($args[0] == 'node' && isset($args[1]) ) {
+        $node = node_load($args[1]);
+        $uid = $node->uid;
+        $node_user = user_load($uid);
+        $block['subject'] = t('Diigo Bookmarks for ') . $node_user->name;
+      }
+      else {
+        $uid = 1;
+        $block['subject'] = t('Diigo Bookmarks');
+      }
+      $block['content'] = diigo_block_content($delta, $uid);
+      return $block;
+    break;
+  }
+}
+
+/**
+ * a custom function for formatting the display of the connect and share block
+ */
+function diigo_block_content($delta = '', $uid){
+  switch($delta){
+    case 'diigo_bookmarks':
+      $content = diigo_display_bookmarks($uid);
+      return $content;
+    break;
+  }
 }
 

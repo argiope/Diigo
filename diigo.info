@@ -1,11 +1,14 @@
 ; $Id$
 name = Diigo Bookmarks
 description = Displays bookmarks from Diigo
-package = Arene Studios Modules
+package = Diigo
 core = 7.x
 
 files[] = diigo.module
 files[] = diigo.classes.inc
 files[] = diigo.install
-;configure=admin/config/content/annotate/settings
+files[] = diigo.admin.inc
+files[] = diigo.settings.inc
+files[] = diigo.tpl.php
+configure = admin/config/content/diigo/settings
 

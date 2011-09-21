@@ -64,7 +64,7 @@ function diigo_schema(){
         'description' => 'tags associated with the bookmark',
         'type' => 'varchar',
         'length' => '512',
-        'not null' => TRUE,
+        'not null' => FALSE,
       ),
       'created_at' => array(
         'description' => 'Bookmark creation time',
@@ -77,11 +77,11 @@ function diigo_schema(){
         'length' => '255',
         'not null' => TRUE,
       ),
-      'desc' => array(
+      'description' => array(
         'description' => 'description of bookmark',
-        'type' => 'text',
-        'size' => 'small',
-        'not null' => TRUE,
+        'type' => 'varchar',
+        'length' => '512',
+        'not null' => FALSE,
       ),
     ),
     'unique keys' => array(
@@ -103,7 +103,7 @@ function diigo_schema(){
         'type' => 'int',
         'not null' => TRUE,
       ),
-      'user' => array(
+      'username' => array(
         'description' => 'Diigo Username',
         'type' => 'varchar',
         'length' => '128',
@@ -148,12 +148,12 @@ function diigo_schema(){
   return $schema;
 }
 /**
-* Implements hook_uninstall().
+* Implements hook_install().
 */
-function diigo_uninstall() {
-  //drop the diigo tables
-  db_drop_table('diigo');
-  db_drop_table('diigo_users');
-  db_drop_table('diigo_bookmarks');
+function diigo_install() {
+  $record = new stdClass();
+  $record->api_key = '';
+  $record->count = 10;
+  drupal_write_record('diigo', $record);
 }
 
