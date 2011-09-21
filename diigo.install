@@ -57,7 +57,7 @@ function diigo_schema(){
       'url' => array(
         'description' => 'URL of bookmark',
         'type' => 'varchar',
-        'length' => '255',
+        'length' => '512',
         'not null' => TRUE,
       ),
       'tags' => array(
@@ -139,12 +139,12 @@ function diigo_schema(){
         'not null' => TRUE,
       ),
     ),
-    'primary key' => array('id'),
     'unique keys' => array(
       'id' => array('id'),
       'uid' => array('uid')
     ),
   );
+
   return $schema;
 }
 /**

@@ -103,12 +103,19 @@ function diigo_download_bookmarks($uid){
         unset($bookmark->desc);
       }
       $bookmark->uid = $uid;
-      drupal_write_record('diigo_bookmarks', $bookmark);
     }
     return $bookmarks;
   }
   else {
     return 'Error: ' . $diigo->error;
+  }
+}
+/**
+ * saves diigo bookmarks expects out put from diigo_download_bookmarks
+ */
+function diigo_save_bookmarks($bookmarks) {
+  foreach($bookmarks as $bookmark){
+    drupal_write_record('diigo_bookmarks', $bookmark);
   }
 }
 
@@ -125,13 +132,30 @@ function diigo_delete_bookmarks($uid){
  */
 function diigo_action_info() {
   return array(
-    'user_block_user_action' => array(
-    'label' => t('Block current user'),
-    'type' => 'user',
+    'diigo_get_bookmarks_action' => array(
+    'label' => t('Get Latest Bookmarks from Diigo'),
+    'type' => 'system',
     'configurable' => FALSE,
-    'triggers' => array('all'),
+    'triggers' => array('cron'),
     ),
   );
+}
+function diigo_get_bookmarks_action() {
+  $result = db_select('diigo_users', 'd')->fields('d', array('uid'))->execute();
+  foreach($result as $record){
+    $bookmarks = diigo_download_bookmarks($record->uid);
+    if(is_array($bookmarks)){
+      diigo_delete_bookmarks($record->uid);
+      diigo_save_bookmarks($bookmarks);
+      watchdog('Diigo', 'Bookmarks Updated for '. $record->uid);
+    }
+    elseif(is_string($bookmarks)) {
+      watchdog('Diigo', $bookmarks, array(), WATCHDOG_ERROR);
+    }
+    else {
+      watchdog('Diigo', 'something exploded in the diigo_get_bookmarks_action.', array(), WATCHDOG_ERROR);
+    }
+  }
 }
 
 function diigo_display_page() {

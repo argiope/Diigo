@@ -7,6 +7,7 @@ function diigo_user_settings() {
   $query->condition('uid', $user->uid)
   ->fields('d', array('username', 'pass', 'list', 'sort', 'tags', 'filter'));
   $results = $query->execute();
+  $options = '';
   foreach($results as $result) {
     $options = $result;
   }
