@@ -7,7 +7,7 @@
 /**
  * Implmentation of hook_schema
  */
-function diigo_schema(){
+function diigo_schema() {
   $schema['diigo'] = array(
     'description' => 'settings for the Diigo module',
     'fields' => array(

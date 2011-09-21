@@ -7,20 +7,23 @@
  * is an array of bookmark objects
  *
  * @param $bookmark
- * a bookmark object it should contain the following properties:
- *
- * @param $bookmark->url
- * the url of the bookmark
- *
- * @param $bookmark->title
- *
- * @param $bookmark->tags
- *
- * @param $bookmark->desc
- *
- * @param $bookmark->created_at
- *
- * @param $bookmark->updated_at
+ *   a bookmark object it should contain the following properties:
+ *    -url
+ *       the url of the bookmark
+ *    -title
+ *       The title of the link
+ *    -tags
+ *       the diigo tags associated with the link
+ *    -description
+ *       the discription of the link
+ *    -created_at
+ *       date and time the link is created at
+ *    -updated_at
+ *       the time when the link was last revised
+ *    -link
+ *       the preformatted link with the title and url
+ *    -favicon
+ *       an image that uses gets google's cached favicons
  *
  */
 ?>

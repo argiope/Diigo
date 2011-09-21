@@ -1,17 +1,22 @@
 <?php
+/**
+ * @file
+ * Has the user configuration settings.
+ */
 function diigo_user_settings() {
   global $user;
-  $id = db_query('SELECT id FROM {diigo_users} WHERE uid = :uid',array('uid'=>$user->uid))->fetchField();
+  $id = db_query('SELECT id FROM {diigo_users} WHERE uid = :uid',
+  array('uid' => $user->uid))->fetchField();
   $id = ($id)? $id : FALSE;
   $query = db_select('diigo_users', 'd');
   $query->condition('uid', $user->uid)
   ->fields('d', array('username', 'pass', 'list', 'sort', 'tags', 'filter'));
   $results = $query->execute();
   $options = '';
-  foreach($results as $result) {
+  foreach ($results as $result) {
     $options = $result;
   }
-  if(!$options){
+  if (!$options) {
     $options = new stdClass();
     $options->username = '';
     $options->pass = '';
@@ -112,12 +117,11 @@ function diigo_user_settings_submit($form, &$form_state) {
   $record->sort = check_plain($form_state['values']['sort']);
   $record->tags = check_plain($form_state['values']['tags']);
   $record->tags = preg_replace('/&amp;/', '&', $record->tags);
-  if($form_state['values']['id']) {
+  if ($form_state['values']['id']) {
     $record->id = $form_state['values']['id'];
     drupal_write_record('diigo_users', $record, 'id');
   }
-  else
-  {
+  else {
     drupal_write_record('diigo_users', $record);
   }
   $form_state['redirect'] = 'user';
